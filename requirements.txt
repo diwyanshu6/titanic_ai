@@ -1,11 +1,10 @@
 fastapi
-uvicorn
+uvicorn[standard]
 pandas
 matplotlib
-seaborn
 langchain
-langchain-openai
 langchain-experimental
+langchain-groq
 python-dotenv
 pydantic
 httpx

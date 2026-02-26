@@ -12,3 +12,4 @@ backend/logs/
 
 # OS
 .DS_Store
+*.png
