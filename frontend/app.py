@@ -4,7 +4,6 @@ import base64
 from PIL import Image
 import io
 
-#   Render backend URL
 API_URL = "https://titanic-backend-klbp.onrender.com/chat"
 
 st.set_page_config(
@@ -18,21 +17,21 @@ st.set_page_config(
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ----------------  CSS ----------------
+# ---------------- CSS ----------------
 st.markdown("""
 <style>
 
-/* White background */
+/* Clean background */
 [data-testid="stAppViewContainer"] {
     background: #ffffff;
 }
 
 /* Centered layout */
 .block-container {
-    max-width: 750px;
+    max-width: 760px;
     margin: auto;
-    padding-top: 60px;
-    padding-bottom: 100px;
+    padding-top: 70px;
+    padding-bottom: 120px;
 }
 
 /* Assistant bubble */
@@ -42,13 +41,15 @@ st.markdown("""
 }
 
 .assistant-bubble {
-    background: #f3f4f6;
+    background: #f5f5f5;
     padding: 14px 18px;
     border-radius: 18px;
     max-width: 75%;
     margin-bottom: 18px;
     font-size: 15px;
-    line-height: 1.5;
+    line-height: 1.6;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    animation: fadeIn 0.25s ease-in-out;
 }
 
 /* User bubble */
@@ -58,37 +59,53 @@ st.markdown("""
 }
 
 .user-bubble {
-    background: #2563eb;
+    background: #3b82f6;
     color: white;
     padding: 14px 18px;
     border-radius: 18px;
     max-width: 75%;
     margin-bottom: 18px;
     font-size: 15px;
-    line-height: 1.5;
+    line-height: 1.6;
+    animation: fadeIn 0.25s ease-in-out;
 }
 
-/* Chat input fixed bottom */
+/* Chat input */
 [data-testid="stChatInput"] {
     position: fixed;
     bottom: 25px;
     left: 50%;
     transform: translateX(-50%);
-    width: 750px;
+    width: 760px;
 }
 
-/* Typing animation */
+[data-testid="stChatInput"] textarea {
+    border-radius: 22px !important;
+}
+
+/* Image styling */
+img {
+    border-radius: 12px;
+    margin-top: 10px;
+}
+
+/* Smooth fade-in */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Thinking pulse animation */
 .typing-container {
     display: flex;
     justify-content: flex-start;
 }
 
 .typing-bubble {
-    background: #f3f4f6;
+    background: #f5f5f5;
     padding: 14px 18px;
     border-radius: 18px;
     margin-bottom: 18px;
-    display: inline-block;
 }
 
 .dot {
@@ -98,15 +115,16 @@ st.markdown("""
     background-color: #9ca3af;
     border-radius: 50%;
     display: inline-block;
-    animation: bounce 1.4s infinite ease-in-out both;
+    animation: pulse 1.4s infinite ease-in-out;
 }
 
-.dot:nth-child(1) { animation-delay: -0.32s; }
-.dot:nth-child(2) { animation-delay: -0.16s; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
 
-@keyframes bounce {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1); }
+@keyframes pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { opacity: 0.3; }
 }
 
 </style>
@@ -115,8 +133,8 @@ st.markdown("""
 # ---------------- EMPTY STATE ----------------
 if len(st.session_state.messages) == 0:
     st.markdown("""
-    <div style="text-align:center; margin-top:140px;">
-        <h1 style="font-weight:600; font-size:38px;">Titanic AI</h1>
+    <div style="text-align:center; margin-top:160px;">
+        <h1 style="font-weight:600; font-size:40px;">Titanic AI</h1>
         <p style="color:#6b7280; font-size:15px;">
             Ask about survival rate, age, gender, class, fares and more.
         </p>
@@ -175,7 +193,7 @@ if prompt := st.chat_input("Message Titanic AI..."):
         res = requests.post(
             API_URL,
             json={"question": prompt},
-            timeout=120  # Prevent freezing
+            timeout=120
         )
 
         thinking_placeholder.empty()
