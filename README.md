@@ -15,7 +15,11 @@ This project demonstrates how to safely integrate LLMs into real-world backend s
 
 ---
 
-# 🌍 Live Deployment
+# 🌍 Live Demo 
+Frontend: https://frontend-vbz2xn8tucw6mptmegbfti.streamlit.app/
+
+Backend API: https://titanic-backend-klbp.onrender.com
+
 
 ## Backend (FastAPI on Render)
 Production API serving `/chat` endpoint.
