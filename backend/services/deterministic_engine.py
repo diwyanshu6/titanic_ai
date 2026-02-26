@@ -1,164 +1,172 @@
-def handle(self, question: str):
+class DeterministicEngine:
 
-    q = question.lower().strip()
-    tokens = q.replace(",", "").split()
+    def __init__(self, df):
+        self.df = df
 
-    filters = {}
+    def handle(self, question: str):
 
-    # ====================================================
-    # 1️⃣ FILTER DETECTION
-    # ====================================================
+        q = question.lower().strip()
+        tokens = q.replace(",", "").split()
 
-    if "male" in tokens:
-        filters["Sex"] = "male"
+        filters = {}
 
-    if "female" in tokens:
-        filters["Sex"] = "female"
+        # ====================================================
+        # 1️⃣ FILTER DETECTION
+        # ====================================================
 
-    if "first" in tokens or "1st" in tokens:
-        filters["Pclass"] = 1
+        if "male" in tokens:
+            filters["Sex"] = "male"
 
-    if "second" in tokens or "2nd" in tokens:
-        filters["Pclass"] = 2
+        if "female" in tokens:
+            filters["Sex"] = "female"
 
-    if "third" in tokens or "3rd" in tokens:
-        filters["Pclass"] = 3
+        if "first" in tokens or "1st" in tokens:
+            filters["Pclass"] = 1
 
-    if "survived" in tokens:
-        filters["Survived"] = 1
+        if "second" in tokens or "2nd" in tokens:
+            filters["Pclass"] = 2
 
-    if "died" in tokens or "dead" in tokens:
-        filters["Survived"] = 0
+        if "third" in tokens or "3rd" in tokens:
+            filters["Pclass"] = 3
 
-    df_filtered = self.df.copy()
+        if "survived" in tokens:
+            filters["Survived"] = 1
 
-    for col, val in filters.items():
-        df_filtered = df_filtered[df_filtered[col] == val]
+        if "died" in tokens or "dead" in tokens:
+            filters["Survived"] = 0
 
-    # ====================================================
-    # 2️⃣ GROUPED COUNTS (MUST BE ABOVE TOTAL COUNT)
-    # ====================================================
+        df_filtered = self.df.copy()
 
-    # Embarked grouped count
-    if "embarked" in q and ("how many" in q or "number" in q):
-        counts = self.df["Embarked"].value_counts()
-        result = "\n".join(
-            f"{k}: {v}" for k, v in counts.items()
-        )
-        return f"Passengers embarked from each port:\n{result}"
+        for col, val in filters.items():
+            df_filtered = df_filtered[df_filtered[col] == val]
 
-    # Generic group by
-    if "how many" in q and "by" in q:
-        for col in self.df.columns:
-            if col.lower() in q:
-                counts = self.df[col].value_counts()
-                result = "\n".join(
-                    f"{k}: {v}" for k, v in counts.items()
-                )
-                return f"Passenger count by {col}:\n{result}"
+        # ====================================================
+        # 2️⃣ GROUPED LOGIC (MUST BE BEFORE TOTAL COUNT)
+        # ====================================================
 
-    # ====================================================
-    # 3️⃣ SIMPLE TOTAL COUNT (MOVE BELOW GROUPED)
-    # ====================================================
+        # Embarked grouped count (most common failure case)
+        if "embarked" in q and ("how many" in q or "number" in q):
+            counts = self.df["Embarked"].value_counts()
+            result = "\n".join(
+                f"{k}: {v}" for k, v in counts.items()
+            )
+            return f"Passengers embarked from each port:\n{result}"
 
-    if "how many passengers" in q and not filters:
-        return f"There were {len(self.df)} passengers in total."
+        # Generic grouped count (How many by X)
+        if ("how many" in q or "number" in q) and "by" in q:
+            for col in self.df.columns:
+                if col.lower() in q:
+                    counts = self.df[col].value_counts()
+                    result = "\n".join(
+                        f"{k}: {v}" for k, v in counts.items()
+                    )
+                    return f"Passenger count by {col}:\n{result}"
 
-    # ====================================================
-    # 4️⃣ FILTERED COUNT
-    # ====================================================
+        # ====================================================
+        # 3️⃣ FILTERED COUNT
+        # ====================================================
 
-    if ("how many" in q or "number" in q) and filters:
-        count = len(df_filtered)
-        return f"There were {count} passengers matching the criteria."
+        if ("how many" in q or "number" in q) and filters:
+            count = len(df_filtered)
+            return f"There were {count} passengers matching the criteria."
 
-    # ====================================================
-    # 5️⃣ PERCENTAGE
-    # ====================================================
+        # ====================================================
+        # 4️⃣ SIMPLE TOTAL COUNT (LOW PRIORITY)
+        # ====================================================
 
-    if "percentage" in q and filters:
-        total = len(self.df)
-        count = len(df_filtered)
-        pct = (count / total) * 100
-        return f"{pct:.2f}% of passengers match the given criteria."
+        if "how many passengers" in q and not filters:
+            return f"There were {len(self.df)} passengers in total."
 
-    # Special male/female percentage
-    if "percentage" in q and ("male" in q or "female" in q):
-        total = len(self.df)
-        gender = "male" if "male" in q else "female"
-        count = len(self.df[self.df["Sex"] == gender])
-        pct = (count / total) * 100
-        return f"{pct:.2f}% of passengers were {gender}."
+        # ====================================================
+        # 5️⃣ PERCENTAGE
+        # ====================================================
 
-    # ====================================================
-    # 6️⃣ NUMERIC OPERATIONS
-    # ====================================================
+        if "percentage" in q and filters:
+            total = len(self.df)
+            count = len(df_filtered)
+            pct = (count / total) * 100
+            return f"{pct:.2f}% of passengers match the given criteria."
 
-    numeric_columns = self.df.select_dtypes(include="number").columns
+        if "percentage" in q and ("male" in q or "female" in q):
+            gender = "male" if "male" in q else "female"
+            count = len(self.df[self.df["Sex"] == gender])
+            total = len(self.df)
+            pct = (count / total) * 100
+            return f"{pct:.2f}% of passengers were {gender}."
 
-    if "average" in q or "mean" in q:
-        for col in numeric_columns:
-            if col.lower() in q:
-                avg = df_filtered[col].mean()
-                return f"The average {col} was {avg:.2f}."
+        # ====================================================
+        # 6️⃣ NUMERIC OPERATIONS
+        # ====================================================
 
-    if "maximum" in q or "max" in q:
-        for col in numeric_columns:
-            if col.lower() in q:
-                val = df_filtered[col].max()
-                return f"The maximum {col} was {val}."
+        numeric_columns = self.df.select_dtypes(include="number").columns
 
-    if "minimum" in q or "min" in q:
-        for col in numeric_columns:
-            if col.lower() in q:
-                val = df_filtered[col].min()
-                return f"The minimum {col} was {val}."
+        if "average" in q or "mean" in q:
+            for col in numeric_columns:
+                if col.lower() in q:
+                    avg = df_filtered[col].mean()
+                    return f"The average {col} was {avg:.2f}."
 
-    # ====================================================
-    # 7️⃣ SURVIVAL RATE
-    # ====================================================
+        if "maximum" in q or "max" in q:
+            for col in numeric_columns:
+                if col.lower() in q:
+                    val = df_filtered[col].max()
+                    return f"The maximum {col} was {val}."
 
-    if "survival rate" in q and "by" in q:
-        for col in self.df.columns:
-            if col.lower() in q:
-                rates = (
-                    self.df.groupby(col)["Survived"]
-                    .mean() * 100
-                )
-                result = "\n".join(
-                    f"{k}: {v:.2f}%"
-                    for k, v in rates.items()
-                )
-                return f"Survival rate by {col}:\n{result}"
+        if "minimum" in q or "min" in q:
+            for col in numeric_columns:
+                if col.lower() in q:
+                    val = df_filtered[col].min()
+                    return f"The minimum {col} was {val}."
 
-    if "highest" in q and "survival rate" in q:
-        rates = (
-            self.df.groupby("Pclass")["Survived"]
-            .mean()
-            .sort_values(ascending=False)
-        )
-        top_class = rates.index[0]
-        top_rate = rates.iloc[0] * 100
-        return f"Class {top_class} had the highest survival rate at {top_rate:.2f}%."
+        # ====================================================
+        # 7️⃣ SURVIVAL RATE
+        # ====================================================
 
-    if "lowest" in q and "survival rate" in q:
-        rates = (
-            self.df.groupby("Pclass")["Survived"]
-            .mean()
-            .sort_values()
-        )
-        bottom_class = rates.index[0]
-        bottom_rate = rates.iloc[0] * 100
-        return f"Class {bottom_class} had the lowest survival rate at {bottom_rate:.2f}%."
+        if "survival rate" in q and "by" in q:
+            for col in self.df.columns:
+                if col.lower() in q:
+                    rates = (
+                        self.df.groupby(col)["Survived"]
+                        .mean() * 100
+                    )
+                    result = "\n".join(
+                        f"{k}: {v:.2f}%"
+                        for k, v in rates.items()
+                    )
+                    return f"Survival rate by {col}:\n{result}"
 
-    # ====================================================
-    # 8️⃣ AGE SPECIAL
-    # ====================================================
+        if "highest" in q and "survival rate" in q:
+            rates = (
+                self.df.groupby("Pclass")["Survived"]
+                .mean()
+                .sort_values(ascending=False)
+            )
+            top_class = rates.index[0]
+            top_rate = rates.iloc[0] * 100
+            return f"Class {top_class} had the highest survival rate at {top_rate:.2f}%."
 
-    if "oldest" in q:
-        return f"The oldest passenger was {df_filtered['Age'].max()} years old."
+        if "lowest" in q and "survival rate" in q:
+            rates = (
+                self.df.groupby("Pclass")["Survived"]
+                .mean()
+                .sort_values()
+            )
+            bottom_class = rates.index[0]
+            bottom_rate = rates.iloc[0] * 100
+            return f"Class {bottom_class} had the lowest survival rate at {bottom_rate:.2f}%."
 
-    if "youngest" in q:
-        return f"The youngest passenger was {df_filtered['Age'].min()} years old."
+        # ====================================================
+        # 8️⃣ AGE SPECIAL
+        # ====================================================
 
-    return None
+        if "oldest" in q:
+            return f"The oldest passenger was {df_filtered['Age'].max()} years old."
+
+        if "youngest" in q:
+            return f"The youngest passenger was {df_filtered['Age'].min()} years old."
+
+        # ====================================================
+        # NOTHING MATCHED
+        # ====================================================
+
+        return None
