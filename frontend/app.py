@@ -4,7 +4,8 @@ import base64
 from PIL import Image
 import io
 
-API_URL = "http://localhost:8000/chat"
+#   Render backend URL
+API_URL = "https://titanic-backend-klbp.onrender.com/chat"
 
 st.set_page_config(
     page_title="Titanic AI",
@@ -17,16 +18,16 @@ st.set_page_config(
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ---------------- CLEAN MINIMAL CSS ----------------
+# ----------------  CSS ----------------
 st.markdown("""
 <style>
 
-/* Clean white background */
+/* White background */
 [data-testid="stAppViewContainer"] {
     background: #ffffff;
 }
 
-/* Centered narrow layout */
+/* Centered layout */
 .block-container {
     max-width: 750px;
     margin: auto;
@@ -76,7 +77,7 @@ st.markdown("""
     width: 750px;
 }
 
-/* ChatGPT-style animated thinking bubble */
+/* Typing animation */
 .typing-container {
     display: flex;
     justify-content: flex-start;
@@ -135,7 +136,6 @@ for msg in st.session_state.messages:
         )
         if msg.get("image"):
             st.image(msg["image"], use_container_width=True)
-
     else:
         st.markdown(
             f"""
@@ -149,10 +149,8 @@ for msg in st.session_state.messages:
 # ---------------- CHAT INPUT ----------------
 if prompt := st.chat_input("Message Titanic AI..."):
 
-    # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Display user instantly
     st.markdown(
         f"""
         <div class="user-container">
@@ -162,7 +160,6 @@ if prompt := st.chat_input("Message Titanic AI..."):
         unsafe_allow_html=True
     )
 
-    # Thinking animation
     thinking_placeholder = st.empty()
     thinking_placeholder.markdown("""
         <div class="typing-container">
@@ -175,19 +172,23 @@ if prompt := st.chat_input("Message Titanic AI..."):
     """, unsafe_allow_html=True)
 
     try:
-        res = requests.post(API_URL, json={"question": prompt})
+        res = requests.post(
+            API_URL,
+            json={"question": prompt},
+            timeout=120  # Prevent freezing
+        )
+
         thinking_placeholder.empty()
 
         if res.status_code == 200:
             data = res.json()
-            answer = data["answer"]
+            answer = data.get("answer", "No response")
             image = None
 
             if data.get("chart"):
                 image_bytes = base64.b64decode(data["chart"])
                 image = Image.open(io.BytesIO(image_bytes))
 
-            # Display assistant response
             st.markdown(
                 f"""
                 <div class="assistant-container">
@@ -207,8 +208,12 @@ if prompt := st.chat_input("Message Titanic AI..."):
             })
 
         else:
-            st.error("Server error")
+            st.error("Server error. Please try again.")
+
+    except requests.exceptions.Timeout:
+        thinking_placeholder.empty()
+        st.error("Backend is waking up (free tier sleep). Please try again.")
 
     except Exception:
         thinking_placeholder.empty()
-        st.error("Backend not running.")
+        st.error("Unable to connect to backend.")
